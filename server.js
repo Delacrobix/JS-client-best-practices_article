@@ -2,8 +2,6 @@ const bodyParser = require("body-parser");
 const express = require("express");
 const { Client, errors } = require("@elastic/elasticsearch");
 
-console.log("Errors: ", errors);
-
 require("dotenv").config();
 
 const ELASTICSEARCH_ENDPOINT = process.env.ELASTICSEARCH_ENDPOINT;
@@ -13,7 +11,6 @@ const PORT = 3000;
 let esClient = new Client({
   node: ELASTICSEARCH_ENDPOINT,
   auth: { apiKey: ELASTICSEARCH_API_KEY },
-  serverMode: "serverless",
 });
 
 const app = express();
@@ -164,8 +161,6 @@ app.get("/search/hybrid", async (req, res) => {
         size: 10,
       },
     });
-
-    console.log("Hybrid search result:", result);
 
     res.status(200).json({
       success: true,

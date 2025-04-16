@@ -7,7 +7,6 @@ const ELASTICSEARCH_API_KEY = process.env.ELASTICSEARCH_API_KEY;
 let esClient = new Client({
   node: ELASTICSEARCH_ENDPOINT,
   auth: { apiKey: ELASTICSEARCH_API_KEY },
-  serverMode: "serverless",
 });
 
 const INDEX_NAME = "vet-visits";
