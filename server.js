@@ -49,7 +49,7 @@ app.get("/search/lexic", async (req, res) => {
       index: INDEX_NAME,
       body: {
         query: {
-          match: {
+          terms: {
             visit_details: q,
             // visit_details: "nail trimming",
           },
@@ -99,6 +99,8 @@ app.get("/search/semantic", async (req, res) => {
     });
   } catch (error) {
     if (error instanceof errors.TimeoutError) {
+      console.error("Timeout error:", error.body);
+
       res.status(500).json({
         success: false,
         results: null,
