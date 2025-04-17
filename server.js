@@ -11,6 +11,7 @@ const PORT = 3000;
 let esClient = new Client({
   node: ELASTICSEARCH_ENDPOINT,
   auth: { apiKey: ELASTICSEARCH_API_KEY },
+  serverMode: "serverless",
 });
 
 const app = express();
@@ -47,11 +48,12 @@ app.get("/search/lexic", async (req, res) => {
   try {
     const result = await esClient.search({
       index: INDEX_NAME,
+      size: 5,
       body: {
         query: {
-          terms: {
-            visit_details: q,
-            // visit_details: "nail trimming",
+          multi_match: {
+            query: q,
+            fields: ["owner_name", "pet_name", "visit_details"],
           },
         },
       },
@@ -63,14 +65,26 @@ app.get("/search/lexic", async (req, res) => {
     });
   } catch (error) {
     if (error instanceof errors.ResponseError) {
-      console.error("Response error:", error.body);
+      let errorMessage =
+        "Response error!, query malformed or server down, contact the administrator!";
 
-      res.status(500).json({
+      if (error.type === "parsing_exception") {
+        errorMessage = "Query malformed, make sure mappings are set correctly";
+      }
+
+      res.status(error.meta.statusCode).json({
+        erroStatus: error.meta.statusCode,
         success: false,
         results: null,
-        error: error.body.error.reason,
+        error: errorMessage,
       });
     }
+
+    res.status(500).json({
+      success: false,
+      results: null,
+      error: error.message,
+    });
   }
 });
 
@@ -82,6 +96,7 @@ app.get("/search/semantic", async (req, res) => {
   try {
     const result = await esClient.search({
       index: INDEX_NAME,
+      size: 5,
       body: {
         query: {
           semantic: {
@@ -101,18 +116,20 @@ app.get("/search/semantic", async (req, res) => {
     if (error instanceof errors.TimeoutError) {
       console.error("Timeout error:", error.body);
 
+      res.status(error.meta.statusCode).json({
+        erroStatus: error.meta.statusCode,
+        success: false,
+        results: null,
+        error:
+          "The request took more than 10s after 3 retries. Try again later.",
+      });
+    } else if (error instanceof errors.ResponseError) {
       res.status(500).json({
         success: false,
         results: null,
         error: error.body.error.reason,
       });
     }
-
-    res.status(500).json({
-      success: false,
-      results: null,
-      error: error.message,
-    });
   }
 });
 
@@ -126,6 +143,7 @@ app.get("/search/hybrid", async (req, res) => {
   try {
     const result = await esClient.search({
       index: INDEX_NAME,
+      size: 5,
       body: {
         retriever: {
           rrf: {
@@ -135,8 +153,9 @@ app.get("/search/hybrid", async (req, res) => {
                   query: {
                     bool: {
                       must: {
-                        match: {
-                          visit_details: q,
+                        multi_match: {
+                          query: q,
+                          fields: ["owner_name", "pet_name", "visit_details"],
                         },
                       },
                     },
@@ -160,7 +179,6 @@ app.get("/search/hybrid", async (req, res) => {
             ],
           },
         },
-        size: 10,
       },
     });
 

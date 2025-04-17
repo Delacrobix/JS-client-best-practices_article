@@ -1,10 +1,12 @@
 const { Client } = require("@elastic/elasticsearch");
+const { createReadStream } = require("fs");
+const split = require("split2");
 require("dotenv").config();
 
 const ELASTICSEARCH_ENDPOINT = process.env.ELASTICSEARCH_ENDPOINT;
 const ELASTICSEARCH_API_KEY = process.env.ELASTICSEARCH_API_KEY;
 
-let esClient = new Client({
+const esClient = new Client({
   node: ELASTICSEARCH_ENDPOINT,
   auth: { apiKey: ELASTICSEARCH_API_KEY },
 });
@@ -45,90 +47,7 @@ const main = async () => {
       },
     });
 
-    const documents = [
-      {
-        owner_name: "Alice Johnson",
-        pet_name: "Buddy",
-        species: "Dog",
-        breed: "Golden Retriever",
-        vaccination_history: ["Rabies", "Parvovirus", "Distemper"],
-        visit_details: "Annual check-up and nail trimming. Healthy and active.",
-      },
-      {
-        owner_name: "Marco Rivera",
-        pet_name: "Milo",
-        species: "Cat",
-        breed: "Siamese",
-        vaccination_history: ["Rabies", "Feline Leukemia"],
-        visit_details: "Slight eye irritation, prescribed eye drops.",
-      },
-      {
-        owner_name: "Sandra Lee",
-        pet_name: "Pickles",
-        species: "Guinea Pig",
-        breed: "Mixed",
-        vaccination_history: [],
-        visit_details: "Loss of appetite, recommended dietary changes.",
-      },
-      {
-        owner_name: "Jake Thompson",
-        pet_name: "Luna",
-        species: "Dog",
-        breed: "Labrador Mix",
-        vaccination_history: ["Rabies", "Bordetella"],
-        visit_details: "Mild ear infection, cleaning and antibiotics given.",
-      },
-      {
-        owner_name: "Emily Chen",
-        pet_name: "Ziggy",
-        species: "Cat",
-        breed: "Mixed",
-        vaccination_history: ["Rabies", "Feline Calicivirus"],
-        visit_details: "Vaccination update and routine physical.",
-      },
-      {
-        owner_name: "Tomás Herrera",
-        pet_name: "Rex",
-        species: "Dog",
-        breed: "German Shepherd",
-        vaccination_history: ["Rabies", "Parvovirus", "Leptospirosis"],
-        visit_details: "Follow-up for previous leg strain, improving well.",
-      },
-      {
-        owner_name: "Nina Park",
-        pet_name: "Coco",
-        species: "Ferret",
-        breed: "Mixed",
-        vaccination_history: ["Rabies"],
-        visit_details: "Slight weight loss; advised new diet.",
-      },
-      {
-        owner_name: "Leo Martínez",
-        pet_name: "Simba",
-        species: "Cat",
-        breed: "Maine Coon",
-        vaccination_history: ["Rabies", "Feline Panleukopenia"],
-        visit_details: "Dental cleaning. Minor tartar buildup removed.",
-      },
-      {
-        owner_name: "Rachel Green",
-        pet_name: "Rocky",
-        species: "Dog",
-        breed: "Bulldog Mix",
-        vaccination_history: ["Rabies", "Parvovirus"],
-        visit_details: "Skin rash, antihistamines prescribed.",
-      },
-      {
-        owner_name: "Daniel Kim",
-        pet_name: "Mochi",
-        species: "Rabbit",
-        breed: "Mixed",
-        vaccination_history: [],
-        visit_details: "Nail trimming and general health check. No issues.",
-      },
-    ];
-
-    await indexData(documents, INDEX_NAME);
+    await indexData("./data.ndjson", INDEX_NAME);
   } catch (error) {
     console.error("Error in main function:", error);
 
@@ -138,6 +57,8 @@ const main = async () => {
 
 const createMappings = async (indexName, mapping) => {
   try {
+    console.log(`Creating mappings for index ${indexName}...`);
+
     const body = await esClient.indices.create({
       index: indexName,
       body: {
@@ -151,25 +72,26 @@ const createMappings = async (indexName, mapping) => {
   }
 };
 
-const buildBulkData = (documents, indexName) => {
-  const operations = [];
-
-  for (const doc of documents) {
-    operations.push({
-      index: { _index: indexName },
-    });
-    operations.push(doc);
-  }
-
-  return operations;
-};
-
-const indexData = async (documents, indexName) => {
+const indexData = async (filePath, indexName) => {
   try {
-    const operations = buildBulkData(documents, indexName);
-    const body = await esClient.bulk({ refresh: true, operations });
+    console.log(`Indexing data from ${filePath} into ${indexName}...`);
 
-    console.log("Bulk indexing successful elements:", body.items.length);
+    const result = await esClient.helpers.bulk({
+      datasource: createReadStream(filePath).pipe(split()),
+
+      onDocument: () => {
+        return {
+          index: { _index: indexName },
+        };
+      },
+      onDrop(doc) {
+        console.error("Error processing document:", doc);
+      },
+    });
+
+    console.log(
+      `Bulk indexing completed. Total documents: ${result.successful}, Failed: ${result.failed}`
+    );
   } catch (error) {
     console.error("Error indexing data:", error);
     throw error;

@@ -8,7 +8,8 @@
     "@elastic/elasticsearch": "^8.17.1",
     "@elastic/elasticsearch-mock": "^2.0.1",
     "dotenv": "^16.5.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "split2": "^4.2.0"
   },
   "scripts": {
     "start": "node server.js",
