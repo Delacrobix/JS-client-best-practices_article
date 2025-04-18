@@ -1,6 +1,6 @@
 {
-  "name": "Elasticsearch-client-js",
-  "version": "1",
+  "name": "elasticsearch-client-js",
+  "version": "1.0.0",
   "main": "index.js",
   "author": "Delacrobix",
   "license": "MIT",
