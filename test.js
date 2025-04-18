@@ -122,43 +122,43 @@ test("performSemanticSearch must return formatted results correctly", async (t) 
   }
 });
 
-// test("createMappings must configure the index", async (t) => {
-//   const indexName = "vet-visits";
+test("createMappings must configure the index", async (t) => {
+  const indexName = "vet-visits";
 
-//   let capturedBody = null;
+  let capturedBody = null;
 
-//   mock.add(
-//     {
-//       method: "PUT",
-//       path: `/${indexName}/_mapping`,
-//     },
-//     (params) => {
-//       capturedBody = params.body;
-//       return { acknowledged: true };
-//     }
-//   );
+  mock.add(
+    {
+      method: "PUT",
+      path: `/${indexName}/_mapping`,
+    },
+    (params) => {
+      capturedBody = params.body;
+      return { acknowledged: true };
+    }
+  );
 
-//   async function createMappings(client, indexName, mappings) {
-//     return await client.indices.putMapping({
-//       index: indexName,
-//       body: mappings,
-//     });
-//   }
+  async function createMappings(client, indexName, mappings) {
+    return await client.indices.putMapping({
+      index: indexName,
+      body: mappings,
+    });
+  }
 
-//   const mappingsConfig = {
-//     properties: {
-//       owner_name: { type: "text", copy_to: "semantic_field" },
-//       pet_name: { type: "text", copy_to: "semantic_field" },
-//       species: { type: "keyword", copy_to: "semantic_field" },
-//       breed: { type: "keyword", copy_to: "semantic_field" },
-//       vaccination_history: { type: "keyword", copy_to: "semantic_field" },
-//       visit_details: { type: "text", copy_to: "semantic_field" },
-//       semantic_field: { type: "semantic_text" },
-//     },
-//   };
+  const mappingsConfig = {
+    properties: {
+      owner_name: { type: "text", copy_to: "semantic_field" },
+      pet_name: { type: "text", copy_to: "semantic_field" },
+      species: { type: "keyword", copy_to: "semantic_field" },
+      breed: { type: "keyword", copy_to: "semantic_field" },
+      vaccination_history: { type: "keyword", copy_to: "semantic_field" },
+      visit_details: { type: "text", copy_to: "semantic_field" },
+      semantic_field: { type: "semantic_text" },
+    },
+  };
 
-//   const response = await createMappings(esClient, indexName, mappingsConfig);
+  const response = await createMappings(esClient, indexName, mappingsConfig);
 
-//   t.deepEqual(capturedBody, mappingsConfig, "The mappings must be correct");
-//   t.truthy(response.acknowledged, "The response must be acknowledged");
-// });
+  t.deepEqual(capturedBody, mappingsConfig, "The mappings must be correct");
+  t.truthy(response.acknowledged, "The response must be acknowledged");
+});
