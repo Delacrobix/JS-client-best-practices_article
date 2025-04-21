@@ -19,30 +19,21 @@ const main = async () => {
       properties: {
         owner_name: {
           type: "text",
-          copy_to: "semantic_field",
         },
         pet_name: {
           type: "text",
-          copy_to: "semantic_field",
         },
         species: {
           type: "keyword",
-          copy_to: "semantic_field",
         },
         breed: {
           type: "keyword",
-          copy_to: "semantic_field",
         },
         vaccination_history: {
           type: "keyword",
-          copy_to: "semantic_field",
         },
         visit_details: {
           type: "text",
-          copy_to: "semantic_field",
-        },
-        semantic_field: {
-          type: "semantic_text",
         },
       },
     });

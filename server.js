@@ -11,7 +11,6 @@ const PORT = 3000;
 let esClient = new Client({
   node: ELASTICSEARCH_ENDPOINT,
   auth: { apiKey: ELASTICSEARCH_API_KEY },
-  serverMode: "serverless",
 });
 
 const app = express();
@@ -40,45 +39,49 @@ app.get("/ping", async (req, res) => {
   }
 });
 
-app.get("/search/lexic", async (req, res) => {
-  const { q } = req.query;
-
-  const INDEX_NAME = "vet-visits";
+app.get("/esql/torecords", async (__, res) => {
+  const q = `FROM vet-visits 
+  | KEEP owner_name, pet_name, species, breed, vaccination_history, visit_details 
+  | LIMIT 5`;
 
   try {
-    const result = await esClient.search({
-      index: INDEX_NAME,
-      size: 5,
-      body: {
-        query: {
-          multi_match: {
-            query: q,
-            fields: ["owner_name", "pet_name", "visit_details"],
-          },
-        },
-      },
-    });
+    const results = await esClient.helpers.esql({ query: q }).toRecords();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      results: result.hits.hits,
+      results: results,
     });
   } catch (error) {
-    if (error instanceof errors.ResponseError) {
-      let errorMessage =
-        "Response error!, query malformed or server down, contact the administrator!";
+    //TODO: handle errors
 
-      if (error.type === "parsing_exception") {
-        errorMessage = "Query malformed, make sure mappings are set correctly";
-      }
+    res.status(500).json({
+      success: false,
+      results: null,
+      error: error,
+    });
+  }
+});
 
-      res.status(error.meta.statusCode).json({
-        erroStatus: error.meta.statusCode,
-        success: false,
-        results: null,
-        error: errorMessage,
-      });
-    }
+app.get("/esql/toarrowreader", async (__, res) => {
+  const q = `FROM vet-visits`;
+
+  try {
+    const reader = await esClient.helpers.esql({ query: q }).toArrowReader();
+
+    // console.log("Reader:", reader);
+    // for (const recordBatch of reader) {
+    //   for (const record of recordBatch) {
+    //     console.log(record.toJSON());
+    //   }
+    // }
+
+    return res.status(200).json({
+      success: true,
+      results: reader,
+    });
+  } catch (error) {
+    console.error("Error in toArrowReader:", error);
+    //TODO: handle errors
 
     res.status(500).json({
       success: false,
@@ -88,106 +91,54 @@ app.get("/search/lexic", async (req, res) => {
   }
 });
 
-app.get("/search/semantic", async (req, res) => {
-  const { q } = req.query;
-
-  const INDEX_NAME = "vet-visits";
+app.get("/esql/toarrowtable", async (__, res) => {
+  const q = `FROM vet-visits 
+  | KEEP owner_name, pet_name, species, breed, vaccination_history, visit_details 
+  | LIMIT 5`;
 
   try {
-    const result = await esClient.search({
-      index: INDEX_NAME,
-      size: 5,
-      body: {
-        query: {
-          semantic: {
-            field: "semantic_field",
-            query: q,
-            // query: "Which pets had nail trimming?",
-          },
-        },
-      },
-    });
+    const table = await esClient.helpers.esql({ query: q }).toArrowTable();
 
-    res.status(200).json({
+    console.log("Table:", table);
+
+    return res.status(200).json({
       success: true,
-      results: result.hits.hits,
+      results: table,
     });
   } catch (error) {
-    if (error instanceof errors.TimeoutError) {
-      console.error("Timeout error:", error.body);
+    console.error("Error in toArrowReader:", error);
+    //TODO: handle errors
 
-      res.status(error.meta.statusCode).json({
-        erroStatus: error.meta.statusCode,
-        success: false,
-        results: null,
-        error:
-          "The request took more than 10s after 3 retries. Try again later.",
-      });
-    } else if (error instanceof errors.ResponseError) {
-      res.status(500).json({
-        success: false,
-        results: null,
-        error: error.body.error.reason,
-      });
-    }
+    res.status(500).json({
+      success: false,
+      results: null,
+      error: error.message,
+    });
   }
 });
 
-app.get("/search/hybrid", async (req, res) => {
-  const { q } = req.query;
+app.get("/esql/analysis", async (req, res) => {
+  const { species, vaccine } = req.query;
 
-  // q = "nail trimming";
+  const q = `FROM vet-visits
+    | WHERE  species == "${species}" AND match(vaccination_history, "${vaccine}")
+    | KEEP owner_name, pet_name, species, breed, vaccination_history, visit_details
+    | LIMIT 5`;
 
-  const INDEX_NAME = "vet-visits";
+  console.log("Query:", q);
 
   try {
-    const result = await esClient.search({
-      index: INDEX_NAME,
-      size: 5,
-      body: {
-        retriever: {
-          rrf: {
-            retrievers: [
-              {
-                standard: {
-                  query: {
-                    bool: {
-                      must: {
-                        multi_match: {
-                          query: q,
-                          fields: ["owner_name", "pet_name", "visit_details"],
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-              {
-                standard: {
-                  query: {
-                    bool: {
-                      must: {
-                        semantic: {
-                          field: "semantic_field",
-                          query: q,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    });
+    const table = await esClient.helpers.esql({ query: q }).toRecords();
 
-    res.status(200).json({
+    console.log(table);
+
+    return res.status(200).json({
       success: true,
-      results: result.hits.hits,
+      results: table,
     });
   } catch (error) {
-    console.error("Error performing search:", error);
+    console.error("Error in toArrowReader:", error);
+    //TODO: handle errors
 
     res.status(500).json({
       success: false,
