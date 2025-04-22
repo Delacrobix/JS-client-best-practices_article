@@ -40,48 +40,75 @@ app.get("/ping", async (req, res) => {
 });
 
 app.get("/esql/torecords", async (__, res) => {
-  const q = `FROM vet-visits 
-  | KEEP owner_name, pet_name, species, breed, vaccination_history, visit_details 
-  | LIMIT 5`;
-
   try {
+    const q = `FROM kibana_sample_data_logs 
+  | KEEP message, response, tags, @timestamp, ip, agent 
+  | LIMIT 2 `;
+
     const results = await esClient.helpers.esql({ query: q }).toRecords();
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       results: results,
     });
   } catch (error) {
-    //TODO: handle errors
+    if (error instanceof errors.ResponseError) {
+      let errorMessage =
+        "Response error! query malformed or server down. Contact the administrator";
+
+      if (error.body.error.type === "parsing_exception") {
+        errorMessage = "Query malformed! Please check your query syntax.";
+      }
+
+      res.status(error.meta.statusCode).json({
+        success: false,
+        results: null,
+        error: errorMessage,
+      });
+    }
 
     res.status(500).json({
       success: false,
       results: null,
-      error: error,
+      error: error.message,
     });
   }
 });
 
 app.get("/esql/toarrowreader", async (__, res) => {
-  const q = `FROM vet-visits`;
+  const q = `FROM kibana_sample_data_logs 
+  | KEEP message, response, tags, @timestamp, ip, agent 
+  | LIMIT 2 `;
 
   try {
     const reader = await esClient.helpers.esql({ query: q }).toArrowReader();
 
-    // console.log("Reader:", reader);
-    // for (const recordBatch of reader) {
-    //   for (const record of recordBatch) {
-    //     console.log(record.toJSON());
-    //   }
-    // }
+    console.log("Reader:", reader);
+    for (const recordBatch of reader) {
+      for (const record of recordBatch) {
+        console.log(record.toJSON());
+      }
+    }
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       results: reader,
     });
   } catch (error) {
-    console.error("Error in toArrowReader:", error);
-    //TODO: handle errors
+    if (error instanceof errors.ResponseError) {
+      let errorMessage =
+        "Response error! query malformed or server down. Contact the administrator";
+
+      if (error.body.error.type === "parsing_exception") {
+        errorMessage = "Query malformed! Please check your query syntax.";
+      }
+
+      res.status(error.meta.statusCode).json({
+        success: false,
+        results: null,
+        error: errorMessage,
+      });
+    }
 
     res.status(500).json({
       success: false,
@@ -92,22 +119,34 @@ app.get("/esql/toarrowreader", async (__, res) => {
 });
 
 app.get("/esql/toarrowtable", async (__, res) => {
-  const q = `FROM vet-visits 
-  | KEEP owner_name, pet_name, species, breed, vaccination_history, visit_details 
-  | LIMIT 5`;
+  const q = `FROM kibana_sample_data_logs 
+  | KEEP message, response, tags, @timestamp, ip, agent 
+  | LIMIT 2 `;
 
   try {
     const table = await esClient.helpers.esql({ query: q }).toArrowTable();
 
-    console.log("Table:", table);
+    const arrayTable = table.toArray();
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      results: table,
+      results: arrayTable,
     });
   } catch (error) {
-    console.error("Error in toArrowReader:", error);
-    //TODO: handle errors
+    if (error instanceof errors.ResponseError) {
+      let errorMessage =
+        "Response error! query malformed or server down. Contact the administrator";
+
+      if (error.body.error.type === "parsing_exception") {
+        errorMessage = "Query malformed! Please check your query syntax.";
+      }
+
+      res.status(error.meta.statusCode).json({
+        success: false,
+        results: null,
+        error: errorMessage,
+      });
+    }
 
     res.status(500).json({
       success: false,
@@ -118,27 +157,40 @@ app.get("/esql/toarrowtable", async (__, res) => {
 });
 
 app.get("/esql/analysis", async (req, res) => {
-  const { species, vaccine } = req.query;
+  const { localization, startDate, endDate } = req.query;
 
-  const q = `FROM vet-visits
-    | WHERE  species == "${species}" AND match(vaccination_history, "${vaccine}")
-    | KEEP owner_name, pet_name, species, breed, vaccination_history, visit_details
-    | LIMIT 5`;
-
-  console.log("Query:", q);
+  const q = `FROM kibana_sample_data_logs
+    | WHERE geo.src == "${localization}" AND @timestamp >= "${startDate}" AND @timestamp <= "${endDate}"
+    | EVAL log_date = DATE_FORMAT("yyyy-MM-dd", @timestamp)
+    | KEEP geo.dest, geo.src, bytes, log_date
+    | SORT log_date DESC
+    | LIMIT 5
+  `;
 
   try {
-    const table = await esClient.helpers.esql({ query: q }).toRecords();
+    const results = await esClient.helpers.esql({ query: q }).toRecords();
 
-    console.log(table);
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      results: table,
+      results: results,
     });
   } catch (error) {
-    console.error("Error in toArrowReader:", error);
-    //TODO: handle errors
+    console.log(error);
+
+    if (error instanceof errors.ResponseError) {
+      let errorMessage =
+        "Response error! query malformed or server down. Contact the administrator";
+
+      if (error.body.error.type === "parsing_exception") {
+        errorMessage = "Query malformed! Please check your query syntax.";
+      }
+
+      res.status(500).json({
+        success: false,
+        results: null,
+        error: errorMessage,
+      });
+    }
 
     res.status(500).json({
       success: false,
