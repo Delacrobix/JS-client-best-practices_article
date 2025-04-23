@@ -1,6 +1,6 @@
-# How to use Elasticsearch in Javascript: code repository
+# ES|QL in Javascript: Leveraging helpers: code repository
 
-This is the code of the blog post from Elastic Labs [How to use Elasticsearch in JavaScript.](https://www.elastic.co/search-labs/blog/how-to-use-elasticsearch-in-javascript)
+This is the code of the blog post from Elastic Labs [ES|QL in Javascript: Leveraging helpers.](https://www.elastic.co/search-labs/blog/es-ql-in-javascript-leveraging-helpers)
 
 ## setup environment variables
 
@@ -15,9 +15,4 @@ npm install
 
 ```bash
 npm run start
-```
-## run the tests
-
-```bash
-npm run test
 ```
