@@ -83,16 +83,19 @@ app.get("/esql/toarrowreader", async (__, res) => {
   try {
     const reader = await esClient.helpers.esql({ query: q }).toArrowReader();
 
-    console.log("Reader:", reader);
-    for (const recordBatch of reader) {
+    const results = [];
+
+    for await (const recordBatch of reader) {
       for (const record of recordBatch) {
-        console.log(record.toJSON());
+        const recordData = record.toJSON();
+
+        results.push(recordData);
       }
     }
 
     res.status(200).json({
       success: true,
-      results: reader,
+      results: results,
     });
   } catch (error) {
     if (error instanceof errors.ResponseError) {
