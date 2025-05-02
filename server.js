@@ -68,7 +68,7 @@ app.get("/search/lexic", async (req, res) => {
       let errorMessage =
         "Response error!, query malformed or server down, contact the administrator!";
 
-      if (error.type === "parsing_exception") {
+      if (error.body.error.type === "parsing_exception") {
         errorMessage = "Query malformed, make sure mappings are set correctly";
       }
 
@@ -102,7 +102,6 @@ app.get("/search/semantic", async (req, res) => {
           semantic: {
             field: "semantic_field",
             query: q,
-            // query: "Which pets had nail trimming?",
           },
         },
       },
@@ -135,8 +134,6 @@ app.get("/search/semantic", async (req, res) => {
 
 app.get("/search/hybrid", async (req, res) => {
   const { q } = req.query;
-
-  // q = "nail trimming";
 
   const INDEX_NAME = "vet-visits";
 
